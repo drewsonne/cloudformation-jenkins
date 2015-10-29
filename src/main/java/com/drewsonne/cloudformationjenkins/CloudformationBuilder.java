@@ -16,6 +16,7 @@ import org.kohsuke.stapler.QueryParameter;
 
 import javax.servlet.ServletException;
 import java.io.IOException;
+import java.io.PrintStream;
 
 /**
  * Sample {@link Builder}.
@@ -31,12 +32,14 @@ import java.io.IOException;
  * <p>
  * When a build is performed, the {@link #perform} method will be invoked.
  *
- * @author Kohsuke Kawaguchi
+ * @author Drew J. Sonne
  */
 public class CloudformationBuilder extends Builder implements SimpleBuildStep {
 
     private final String name;
 
+    protected String currentStackStatus;
+    
     // Fields in config.jelly must match the parameter names in the "DataBoundConstructor"
     @DataBoundConstructor
     public CloudformationBuilder(String name) {
@@ -55,14 +58,50 @@ public class CloudformationBuilder extends Builder implements SimpleBuildStep {
         // This is where you 'build' the project.
         // Since this is a dummy, we just say 'hello world' and call that a build.
 
-        // This also shows how you can consult the global configuration of the builder
-        if (getDescriptor().getUseFrench())
-            listener.getLogger().println("Bonjour, "+name+"!");
-        else
-            listener.getLogger().println("Hello, "+name+"!");
+    	boolean waiting = false;
+    	CloudformationStack stack = new CloudformationStack(null);
+    	if(stack.exists()) {
+    		stack.reload();
+    		if(stack.notInProgress()) {
+    			stack.update("hello", null);
+    			waiting = true;
+    		}
+    	} else {
+    		stack.create("hello", null);
+    		waiting=true;
+    	}
+    	
+    	if (waiting) {
+    		stack.reload();
+    		while(waiting) {
+                try {
+					Thread.sleep(4000);
+	    			stack.reload();
+	    			waiting = stack.isProcessing();
+	    			ingestStackStatus(listener.getLogger(), stack.status());
+				} catch (InterruptedException e) {
+					waiting = false;
+				}
+    		}
+    	}
+    	
     }
 
-    // Overridden for better type safety.
+    /**
+     * If the status of the stack changes, print it to the logger.
+     * @param logger Logger to write status changes to
+     * @param status The status which we are ingesting
+     */
+    private void ingestStackStatus(PrintStream logger, String status) {
+    	if(currentStackStatus == null) {
+    		logger.println(status);
+    	} else if(!status.equals(currentStackStatus)) {
+    		logger.println(status);
+    		currentStackStatus = status;
+    	}
+	}
+
+	// Overridden for better type safety.
     // If your plugin doesn't really define any property on Descriptor,
     // you don't have to do this.
     @Override
@@ -87,7 +126,6 @@ public class CloudformationBuilder extends Builder implements SimpleBuildStep {
          * <p>
          * If you don't want fields to be persisted, use <tt>transient</tt>.
          */
-        private boolean useFrench;
 
         /**
          * AWS Access Key ID
@@ -142,29 +180,22 @@ public class CloudformationBuilder extends Builder implements SimpleBuildStep {
          * This human readable name is used in the configuration screen.
          */
         public String getDisplayName() {
-            return "BuildCloudformationStack";
+            return "Build Cloudformation Stack";
         }
 
         @Override
         public boolean configure(StaplerRequest req, JSONObject formData) throws FormException {
             // To persist global configuration information,
             // set that to properties and call save().
-            useFrench = formData.getBoolean("useFrench");
+            awsAccessKeyId = formData.getString("aws_access_key_id");
+            awsSecretKey = formData.getString("aws_secret_access_key");
+            iamRole = formData.getString("aws_role");
             // ^Can also use req.bindJSON(this, formData);
             //  (easier when there are many fields; need set* methods for this, like setUseFrench)
             save();
             return super.configure(req,formData);
         }
 
-        /**
-         * This method returns true if the global configuration says we should speak French.
-         *
-         * The method name is bit awkward because global.jelly calls this method to determine
-         * the initial state of the checkbox by the naming convention.
-         */
-        public boolean getUseFrench() {
-            return useFrench;
-        }
     }
 }
 
