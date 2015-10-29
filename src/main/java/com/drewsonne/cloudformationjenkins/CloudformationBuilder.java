@@ -48,6 +48,7 @@ public class CloudformationBuilder extends Builder implements SimpleBuildStep {
 
     /**
      * We'll use this from the <tt>config.jelly</tt>.
+     * @return 
      */
     public String getName() {
         return name;
@@ -75,14 +76,14 @@ public class CloudformationBuilder extends Builder implements SimpleBuildStep {
     		stack.reload();
     		while(waiting) {
                 try {
-					Thread.sleep(4000);
-	    			stack.reload();
-	    			waiting = stack.isProcessing();
-	    			ingestStackStatus(listener.getLogger(), stack.status());
-				} catch (InterruptedException e) {
-					waiting = false;
-				}
-    		}
+                    Thread.sleep(4000);
+                    stack.reload();
+                    waiting = stack.isProcessing();
+                    ingestStackStatus(listener.getLogger(), stack.status());
+		} catch (InterruptedException e) {
+                    waiting = false;
+		}
+            }
     	}
     	
     }
