@@ -100,7 +100,7 @@ public class CloudformationBuilder extends Builder implements SimpleBuildStep {
     		logger.println(status);
     		currentStackStatus = status;
     	}
-	}
+    }
 
 	// Overridden for better type safety.
     // If your plugin doesn't really define any property on Descriptor,
@@ -162,6 +162,8 @@ public class CloudformationBuilder extends Builder implements SimpleBuildStep {
          *      Note that returning {@link FormValidation#error(String)} does not
          *      prevent the form from being saved. It just means that a message
          *      will be displayed to the user.
+         * @throws java.io.IOException
+         * @throws javax.servlet.ServletException
          */
         public FormValidation doCheckName(@QueryParameter String value)
                 throws IOException, ServletException {
@@ -172,6 +174,7 @@ public class CloudformationBuilder extends Builder implements SimpleBuildStep {
             return FormValidation.ok();
         }
 
+        @Override
         public boolean isApplicable(Class<? extends AbstractProject> aClass) {
             // Indicates that this builder can be used with all kinds of project types
             return true;
@@ -179,7 +182,9 @@ public class CloudformationBuilder extends Builder implements SimpleBuildStep {
 
         /**
          * This human readable name is used in the configuration screen.
+         * @return 
          */
+        @Override
         public String getDisplayName() {
             return "Build Cloudformation Stack";
         }
